@@ -1,0 +1,644 @@
+<Window x:Class="CouchDeck.UI.OverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="clr-namespace:CouchDeck.UI"
+        Title="CouchDeck"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        WindowState="Maximized"
+        Topmost="True"
+        ShowInTaskbar="False"
+        ShowActivated="True"
+        Background="{DynamicResource BackgroundBrush}"
+        FontFamily="{DynamicResource UiFont}"
+        Foreground="{DynamicResource TextBrush}"
+        FontSize="22"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Ideal"
+        TextOptions.TextRenderingMode="Auto"
+        RenderOptions.BitmapScalingMode="HighQuality">
+
+    <Window.Resources>
+        <ui:FractionToWidthConverter x:Key="FractionToWidth" />
+
+        <!-- ===== Library tiles ===== -->
+        <DataTemplate x:Key="GameTileTemplate">
+            <Button Style="{StaticResource GameTile}" Click="OnGameClicked" />
+        </DataTemplate>
+        <DataTemplate x:Key="AddTileTemplate">
+            <Button Style="{StaticResource AddTile}" Click="OnAddTileClicked" />
+        </DataTemplate>
+        <ui:TileTemplateSelector x:Key="TileSelector"
+                                 GameTemplate="{StaticResource GameTileTemplate}"
+                                 AddTemplate="{StaticResource AddTileTemplate}" />
+
+        <ItemsPanelTemplate x:Key="GridPanel">
+            <WrapPanel />
+        </ItemsPanelTemplate>
+        <ItemsPanelTemplate x:Key="ShelfPanel">
+            <StackPanel Orientation="Horizontal" />
+        </ItemsPanelTemplate>
+
+        <!-- ===== Filter chips (View button cycles) ===== -->
+        <DataTemplate x:Key="FilterChipTemplate">
+            <Border x:Name="Chip" CornerRadius="18" Padding="16,6,16,7" Margin="0,0,10,0"
+                    Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock x:Name="Label" Text="{Binding Label}" FontSize="16" FontWeight="SemiBold" />
+                    <TextBlock x:Name="Count" Text="{Binding Count}" FontSize="16" Margin="8,0,0,0" Opacity="0.6" />
+                </StackPanel>
+            </Border>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsActive}" Value="True">
+                    <Setter TargetName="Chip" Property="Background" Value="{DynamicResource AccentGradientBrush}" />
+                    <Setter TargetName="Chip" Property="BorderBrush" Value="Transparent" />
+                    <Setter TargetName="Label" Property="Foreground" Value="{DynamicResource OnAccentBrush}" />
+                    <Setter TargetName="Count" Property="Foreground" Value="{DynamicResource OnAccentBrush}" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <!-- ===== Open windows ===== -->
+        <DataTemplate x:Key="WindowRowTemplate">
+            <Button Style="{StaticResource RowButton}" Click="OnWindowClicked" MinHeight="92">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid Width="56" Height="56" Margin="4,0,22,0">
+                        <Border x:Name="Avatar" CornerRadius="14" Background="{DynamicResource AccentGradientBrush}">
+                            <TextBlock Text="{Binding Initial}" FontSize="26" FontWeight="Bold" HorizontalAlignment="Center"
+                                       VerticalAlignment="Center" Foreground="{DynamicResource OnAccentBrush}" />
+                        </Border>
+                        <Image x:Name="AppIcon" Source="{Binding Icon}" RenderOptions.BitmapScalingMode="HighQuality" />
+                    </Grid>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Title}" FontSize="24" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding ProcessName}" FontSize="16" Foreground="{DynamicResource SubtleTextBrush}" Margin="0,2,0,0" />
+                    </StackPanel>
+                </Grid>
+            </Button>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding HasIcon}" Value="True">
+                    <Setter TargetName="Avatar" Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <!-- ===== Dialog / menu / file browser rows ===== -->
+        <DataTemplate x:Key="ModalItemTemplate">
+            <Button Style="{StaticResource RowButton}" Click="OnModalItemClicked" MinHeight="70" Margin="0,4">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="46" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="Glyph" Text="{Binding Glyph}" Style="{StaticResource IconText}" FontSize="22"
+                               Foreground="{DynamicResource AccentBrush}" />
+                    <Border x:Name="Picture" Width="40" Height="40" CornerRadius="9" HorizontalAlignment="Left" Visibility="Collapsed">
+                        <Border.Background>
+                            <ImageBrush ImageSource="{Binding Image}" Stretch="UniformToFill" />
+                        </Border.Background>
+                    </Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock x:Name="Label" Text="{Binding Label}" FontSize="21" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                        <TextBlock x:Name="Detail" Text="{Binding Detail}" FontSize="15" Foreground="{DynamicResource SubtleTextBrush}"
+                                   TextTrimming="CharacterEllipsis" Margin="0,2,0,0" />
+                    </StackPanel>
+                </Grid>
+            </Button>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsDanger}" Value="True">
+                    <Setter TargetName="Glyph" Property="Foreground" Value="{DynamicResource DangerBrush}" />
+                    <Setter TargetName="Label" Property="Foreground" Value="{DynamicResource DangerBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding HasDetail}" Value="False">
+                    <Setter TargetName="Detail" Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding HasImage}" Value="True">
+                    <Setter TargetName="Glyph" Property="Visibility" Value="Collapsed" />
+                    <Setter TargetName="Picture" Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <!-- ===== Button hints ===== -->
+        <DataTemplate x:Key="HintTemplate">
+            <StackPanel Orientation="Horizontal" Margin="0,0,30,0">
+                <Border x:Name="Key" MinWidth="34" Height="34" CornerRadius="17" Background="{Binding Fill}" Padding="9,0">
+                    <TextBlock Text="{Binding Glyph}" FontSize="15" FontWeight="Bold" Foreground="White"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <TextBlock Text="{Binding Label}" FontSize="18" Margin="10,0,0,0" VerticalAlignment="Center"
+                           Foreground="{DynamicResource SubtleTextBrush}" />
+            </StackPanel>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsRound}" Value="False">
+                    <Setter TargetName="Key" Property="CornerRadius" Value="8" />
+                    <Setter TargetName="Key" Property="BorderBrush" Value="#59FFFFFF" />
+                    <Setter TargetName="Key" Property="BorderThickness" Value="1" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <!-- ===== Customize page rows ===== -->
+        <DataTemplate x:Key="SettingHeaderTemplate">
+            <StackPanel Orientation="Horizontal" Margin="8,30,0,8">
+                <TextBlock Text="{Binding Glyph}" Style="{StaticResource IconText}" FontSize="18" Foreground="{DynamicResource AccentBrush}" />
+                <TextBlock Text="{Binding Label}" FontSize="19" FontWeight="Bold" Margin="12,0,0,0" Foreground="{DynamicResource SubtleTextBrush}" />
+            </StackPanel>
+        </DataTemplate>
+
+        <!-- Shared left part of a setting row: icon, name, description -->
+        <DataTemplate x:Key="SettingLabel">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="44" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="{Binding Glyph}" Style="{StaticResource IconText}" FontSize="20" Foreground="{DynamicResource SubtleTextBrush}" />
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Label}" FontSize="20" FontWeight="SemiBold" />
+                    <TextBlock x:Name="Description" Text="{Binding Description}" FontSize="14" TextWrapping="Wrap"
+                               Foreground="{DynamicResource SubtleTextBrush}" Margin="0,3,0,0" />
+                </StackPanel>
+            </Grid>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding HasDescription}" Value="False">
+                    <Setter TargetName="Description" Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <DataTemplate x:Key="SettingChoiceTemplate">
+            <Button Style="{StaticResource RowButton}" Click="OnSettingClicked" MinHeight="72" Margin="6,3">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource SettingLabel}" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="20,0,0,0">
+                        <TextBlock Text="&#xE76B;" Style="{StaticResource IconText}" FontSize="14" Foreground="{DynamicResource FaintTextBrush}" />
+                        <Ellipse x:Name="Swatch" Width="22" Height="22" Fill="{Binding Swatch}" Margin="14,0,0,0"
+                                 Stroke="#40FFFFFF" StrokeThickness="1.5" />
+                        <TextBlock Text="{Binding ValueText}" FontSize="19" FontWeight="SemiBold" Margin="12,0,14,0" MinWidth="80"
+                                   TextAlignment="Center" Foreground="{DynamicResource AccentBrush}" />
+                        <TextBlock Text="&#xE76C;" Style="{StaticResource IconText}" FontSize="14" Foreground="{DynamicResource FaintTextBrush}" />
+                    </StackPanel>
+                </Grid>
+            </Button>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding HasSwatch}" Value="False">
+                    <Setter TargetName="Swatch" Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <DataTemplate x:Key="SettingToggleTemplate">
+            <Button Style="{StaticResource RowButton}" Click="OnSettingClicked" MinHeight="72" Margin="6,3">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource SettingLabel}" />
+                    <Border x:Name="Track" Grid.Column="1" Width="66" Height="36" CornerRadius="18" Margin="20,0,0,0"
+                            Background="#33FFFFFF" BorderBrush="#40FFFFFF" BorderThickness="1">
+                        <Ellipse x:Name="Knob" Width="26" Height="26" Fill="White" HorizontalAlignment="Left" Margin="4,0">
+                            <Ellipse.RenderTransform>
+                                <TranslateTransform x:Name="KnobMove" X="0" />
+                            </Ellipse.RenderTransform>
+                        </Ellipse>
+                    </Border>
+                </Grid>
+            </Button>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsOn}" Value="True">
+                    <Setter TargetName="Track" Property="Background" Value="{DynamicResource AccentGradientBrush}" />
+                    <Setter TargetName="Track" Property="BorderBrush" Value="Transparent" />
+                    <DataTrigger.EnterActions>
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetName="KnobMove" Storyboard.TargetProperty="X" To="30" Duration="0:0:0.22">
+                                    <DoubleAnimation.EasingFunction>
+                                        <BackEase EasingMode="EaseOut" Amplitude="0.4" />
+                                    </DoubleAnimation.EasingFunction>
+                                </DoubleAnimation>
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </DataTrigger.EnterActions>
+                    <DataTrigger.ExitActions>
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetName="KnobMove" Storyboard.TargetProperty="X" To="0" Duration="0:0:0.22">
+                                    <DoubleAnimation.EasingFunction>
+                                        <BackEase EasingMode="EaseOut" Amplitude="0.4" />
+                                    </DoubleAnimation.EasingFunction>
+                                </DoubleAnimation>
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </DataTrigger.ExitActions>
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <DataTemplate x:Key="SettingSliderTemplate">
+            <Button Style="{StaticResource RowButton}" Click="OnSettingClicked" MinHeight="72" Margin="6,3">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource SettingLabel}" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="20,0,0,0">
+                        <Grid Width="230" Height="10" VerticalAlignment="Center">
+                            <Border CornerRadius="5" Background="#2EFFFFFF" />
+                            <Border CornerRadius="5" HorizontalAlignment="Left" Background="{DynamicResource AccentGradientBrush}"
+                                    Width="{Binding Fraction, Converter={StaticResource FractionToWidth}, ConverterParameter=230}" />
+                        </Grid>
+                        <TextBlock Text="{Binding ValueText}" FontSize="19" FontWeight="SemiBold" Margin="18,0,4,0" MinWidth="72"
+                                   TextAlignment="Right" Foreground="{DynamicResource AccentBrush}" />
+                    </StackPanel>
+                </Grid>
+            </Button>
+        </DataTemplate>
+
+        <DataTemplate x:Key="SettingActionTemplate">
+            <Button Style="{StaticResource RowButton}" Click="OnSettingClicked" MinHeight="72" Margin="6,3">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource SettingLabel}" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="20,0,0,0">
+                        <Border x:Name="Swatch" Width="64" Height="28" CornerRadius="14" Background="{Binding Swatch}" Margin="0,0,14,0"
+                                BorderBrush="#40FFFFFF" BorderThickness="1.5" />
+                        <TextBlock Text="{Binding ValueText}" FontSize="17" Foreground="{DynamicResource SubtleTextBrush}" Margin="0,0,14,0"
+                                   VerticalAlignment="Center" />
+                        <TextBlock Text="&#xE76C;" Style="{StaticResource IconText}" FontSize="16" Foreground="{DynamicResource AccentBrush}" />
+                    </StackPanel>
+                </Grid>
+            </Button>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding HasSwatch}" Value="False">
+                    <Setter TargetName="Swatch" Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <ui:SettingTemplateSelector x:Key="SettingSelector"
+                                    Header="{StaticResource SettingHeaderTemplate}"
+                                    Choice="{StaticResource SettingChoiceTemplate}"
+                                    Toggle="{StaticResource SettingToggleTemplate}"
+                                    Slider="{StaticResource SettingSliderTemplate}"
+                                    Action="{StaticResource SettingActionTemplate}" />
+    </Window.Resources>
+
+    <Grid x:Name="Root" ClipToBounds="True">
+
+        <!-- ================= Backdrop: aurora glow, art of the focused game, shading ================= -->
+        <Grid x:Name="Backdrop" IsHitTestVisible="False">
+            <Grid x:Name="Aurora">
+                <Ellipse x:Name="Blob1" Width="1500" Height="1100" Fill="{DynamicResource AuroraBrush1}"
+                         HorizontalAlignment="Left" VerticalAlignment="Top" Margin="-520,-480,0,0" />
+                <Ellipse x:Name="Blob2" Width="1400" Height="1100" Fill="{DynamicResource AuroraBrush2}"
+                         HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-520,-520" />
+                <Ellipse x:Name="Blob3" Width="1100" Height="900" Fill="{DynamicResource AuroraBrush3}"
+                         HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-420,-180,0" Opacity="0.6" />
+            </Grid>
+
+            <!-- Two art layers that crossfade (banner / poster / blur). Own Grid so their ZIndex swap stays below the shading. -->
+            <Grid x:Name="BackdropArt" ClipToBounds="True">
+                <Grid x:Name="BackdropLayerA" Opacity="0">
+                    <Image x:Name="BackdropImageA" RenderOptions.BitmapScalingMode="HighQuality" />
+                </Grid>
+                <Grid x:Name="BackdropLayerB" Opacity="0">
+                    <Image x:Name="BackdropImageB" RenderOptions.BitmapScalingMode="HighQuality" />
+                </Grid>
+            </Grid>
+
+            <Rectangle x:Name="DimLayer" Fill="{DynamicResource BackgroundBrush}" Opacity="0.2" />
+            <Rectangle x:Name="TopShade" Fill="{DynamicResource TopShadeBrush}" />
+            <Rectangle x:Name="SideShade" Fill="{DynamicResource SideShadeBrush}" />
+            <Rectangle x:Name="BottomShade" Fill="{DynamicResource BottomShadeBrush}" />
+            <Rectangle x:Name="Vignette" Fill="{DynamicResource VignetteBrush}" />
+
+            <!-- Extra calm behind text-heavy pages (Windows, System, Customize) -->
+            <Rectangle x:Name="PageDim" Fill="{DynamicResource BackgroundBrush}" Opacity="0" />
+        </Grid>
+
+        <!-- ================= Everything else scales with "UI scale" ================= -->
+        <Grid x:Name="UiRoot">
+            <Grid.LayoutTransform>
+                <ScaleTransform x:Name="UiScale" ScaleX="1" ScaleY="1" />
+            </Grid.LayoutTransform>
+
+            <Grid x:Name="Main">
+                <Grid x:Name="MainContent" Margin="72,38,72,26">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />   <!-- header / tabs -->
+                        <RowDefinition Height="Auto" />   <!-- now playing -->
+                        <RowDefinition Height="*" />      <!-- page -->
+                        <RowDefinition Height="Auto" />   <!-- button hints -->
+                    </Grid.RowDefinitions>
+
+                    <!-- ================= Header ================= -->
+                    <Grid Grid.Row="0" Margin="0,0,0,22">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Grid Width="48" Height="48">
+                                <Grid>
+                                    <Grid.CacheMode>
+                                        <BitmapCache />
+                                    </Grid.CacheMode>
+                                    <Border CornerRadius="15" Background="{DynamicResource AccentGradientBrush}">
+                                        <Border.Effect>
+                                            <DropShadowEffect Color="{DynamicResource AccentGlowColor}" BlurRadius="22" ShadowDepth="0" Opacity="0.7" />
+                                        </Border.Effect>
+                                    </Border>
+                                </Grid>
+                                <Image x:Name="HeaderLogo" RenderOptions.BitmapScalingMode="HighQuality" />
+                            </Grid>
+                            <TextBlock Text="CouchDeck" FontSize="26" FontWeight="Bold" Margin="16,0,0,1" VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Border Style="{StaticResource Chip}" Margin="0,0,12,0" Padding="12,5">
+                                <TextBlock Text="LB" FontSize="15" FontWeight="Bold" />
+                            </Border>
+                            <Grid x:Name="TabHost">
+                                <Border CornerRadius="29" Background="{DynamicResource SurfaceBrush}"
+                                        BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1" />
+                                <Grid x:Name="TabIndicator" HorizontalAlignment="Left" VerticalAlignment="Stretch" Width="0" Margin="0,4">
+                                    <Grid.CacheMode>
+                                        <BitmapCache />
+                                    </Grid.CacheMode>
+                                    <Grid.RenderTransform>
+                                        <TranslateTransform x:Name="TabIndicatorMove" />
+                                    </Grid.RenderTransform>
+                                    <Border CornerRadius="25" Background="{DynamicResource AccentGradientBrush}">
+                                        <Border.Effect>
+                                            <DropShadowEffect Color="{DynamicResource AccentGlowColor}" BlurRadius="20" ShadowDepth="0" Opacity="0.65" />
+                                        </Border.Effect>
+                                    </Border>
+                                </Grid>
+                                <StackPanel x:Name="TabStrip" Orientation="Horizontal" Margin="4,0">
+                                    <TextBlock x:Name="GamesTab" Text="Games" Style="{StaticResource TabText}" />
+                                    <TextBlock x:Name="LibraryTab" Text="Library" Style="{StaticResource TabText}" />
+                                    <TextBlock x:Name="WindowsTab" Text="Windows" Style="{StaticResource TabText}" />
+                                    <TextBlock x:Name="SystemTab" Text="System" Style="{StaticResource TabText}" />
+                                    <TextBlock x:Name="CustomizeTab" Text="Customize" Style="{StaticResource TabText}" />
+                                </StackPanel>
+                            </Grid>
+                            <Border Style="{StaticResource Chip}" Margin="12,0,0,0" Padding="12,5">
+                                <TextBlock Text="RB" FontSize="15" FontWeight="Bold" />
+                            </Border>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <Border x:Name="ArtChip" Style="{StaticResource Chip}" Visibility="Collapsed">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock x:Name="ArtSpinner" Text="&#xE895;" Style="{StaticResource IconText}" FontSize="15"
+                                               Foreground="{DynamicResource AccentBrush}" RenderTransformOrigin="0.5,0.5">
+                                        <TextBlock.RenderTransform>
+                                            <RotateTransform x:Name="ArtSpin" />
+                                        </TextBlock.RenderTransform>
+                                    </TextBlock>
+                                    <TextBlock x:Name="ArtChipText" Margin="10,0,0,0" FontSize="15" />
+                                </StackPanel>
+                            </Border>
+                            <Border x:Name="MouseModeChip" Style="{StaticResource Chip}" Visibility="Collapsed"
+                                    Background="{DynamicResource AccentSoftBrush}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE962;" Style="{StaticResource IconText}" FontSize="15" Foreground="{DynamicResource AccentBrush}" />
+                                    <TextBlock Text="Mouse mode" Margin="10,0,0,0" FontSize="15" />
+                                </StackPanel>
+                            </Border>
+                            <StackPanel x:Name="ClockPanel" Margin="14,0,0,0" VerticalAlignment="Center">
+                                <TextBlock x:Name="ClockText" FontSize="34" FontWeight="SemiBold" HorizontalAlignment="Right" />
+                                <TextBlock x:Name="DateText" FontSize="15" HorizontalAlignment="Right" Margin="0,-3,0,0"
+                                           Foreground="{DynamicResource SubtleTextBrush}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- ================= Now playing (the app that was in front when you pressed Xbox) ================= -->
+                    <Border x:Name="NowPlayingBar" Grid.Row="1" Style="{StaticResource GlassPanel}" Padding="26,16"
+                            Margin="0,0,0,18" Visibility="Collapsed">
+                        <DockPanel>
+                            <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Grid Width="12" Height="12" Margin="2,0,18,0" VerticalAlignment="Center">
+                                    <Ellipse x:Name="LiveDot" Fill="{DynamicResource AccentBrush}" />
+                                </Grid>
+                                <StackPanel>
+                                    <TextBlock Text="NOW PLAYING" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
+                                    <TextBlock x:Name="NowPlayingTitle" FontSize="26" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" MaxWidth="900" />
+                                </StackPanel>
+                            </StackPanel>
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button Content="Resume" ui:Fx.Icon="&#xE768;" Style="{StaticResource PillButton}" Click="OnResumeClicked" />
+                                <Button Content="Close" ui:Fx.Icon="&#xE711;" Style="{StaticResource PillButton}" Click="OnCloseCurrentClicked" />
+                                <Button Content="Force quit" ui:Fx.Icon="&#xE74D;" Style="{StaticResource DangerPill}" Click="OnKillCurrentClicked" />
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+
+                    <!-- ================= Pages ================= -->
+                    <Grid Grid.Row="2" x:Name="PageHost">
+
+                        <!-- Games -->
+                        <Grid x:Name="GamesPage">
+                            <Grid.RowDefinitions>
+                                <RowDefinition x:Name="HeroRow" Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition x:Name="LibraryRow" Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <StackPanel x:Name="HeroPanel" Margin="8,0,0,6" VerticalAlignment="Bottom">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border x:Name="HeroSourceChip" CornerRadius="12" Padding="12,3,12,4" Background="{DynamicResource AccentGradientBrush}">
+                                        <TextBlock x:Name="HeroSource" Text="COUCHDECK" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource OnAccentBrush}" />
+                                    </Border>
+                                    <TextBlock x:Name="HeroMeta" FontSize="17" Margin="14,0,0,0" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource SubtleTextBrush}" />
+                                </StackPanel>
+                                <TextBlock x:Name="HeroTitle" Text="Your library" FontSize="58" FontWeight="{DynamicResource TitleWeight}"
+                                           TextTrimming="CharacterEllipsis" Margin="0,4,0,0" />
+                            </StackPanel>
+
+                            <ItemsControl x:Name="FilterBar" Grid.Row="1" Margin="8,10,0,0" Focusable="False"
+                                          ItemTemplate="{StaticResource FilterChipTemplate}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+
+                            <TextBlock x:Name="GamesStatus" Grid.Row="2" Text="Scanning for games..." FontSize="26"
+                                       Foreground="{DynamicResource SubtleTextBrush}" Margin="12,30,0,0" TextWrapping="Wrap" />
+
+                            <ScrollViewer x:Name="GamesScroll" Grid.Row="2" Focusable="False"
+                                          VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
+                                <ItemsControl x:Name="GamesList" Focusable="False" Margin="10,22,10,46" HorizontalAlignment="Center"
+                                              ItemTemplateSelector="{StaticResource TileSelector}"
+                                              ItemsPanel="{StaticResource GridPanel}" />
+                            </ScrollViewer>
+                        </Grid>
+
+                        <!-- Open windows (Alt+Tab replacement) -->
+                        <Grid x:Name="WindowsPage" Visibility="Collapsed">
+                            <TextBlock x:Name="WindowsEmpty" Text="No other windows are open." FontSize="26" Margin="12"
+                                       Foreground="{DynamicResource SubtleTextBrush}" Visibility="Collapsed" />
+                            <ScrollViewer x:Name="WindowsScroll" Focusable="False" VerticalScrollBarVisibility="Hidden">
+                                <ItemsControl x:Name="WindowsList" Focusable="False" Margin="0,6,0,30"
+                                              ItemTemplate="{StaticResource WindowRowTemplate}" />
+                            </ScrollViewer>
+                        </Grid>
+
+                        <!-- System controls. CommandParameter = action name handled in OnSystemActionClicked. -->
+                        <ScrollViewer x:Name="SystemPage" Focusable="False" VerticalScrollBarVisibility="Hidden" Visibility="Collapsed">
+                            <StackPanel x:Name="SystemContent" Margin="0,0,0,30">
+                                <TextBlock Text="SOUND" Style="{StaticResource SectionHeader}" Margin="10,4,0,10" />
+                                <WrapPanel>
+                                    <Button Content="Volume down" ui:Fx.Icon="&#xE993;" CommandParameter="VolumeDown" Style="{StaticResource ActionCard}" Click="OnSystemActionClicked" />
+                                    <Button Content="Volume up" ui:Fx.Icon="&#xE995;" CommandParameter="VolumeUp" Style="{StaticResource ActionCard}" Click="OnSystemActionClicked" />
+                                    <Button Content="Mute" ui:Fx.Icon="&#xE74F;" CommandParameter="Mute" Style="{StaticResource ActionCard}" Click="OnSystemActionClicked" />
+                                    <Button Content="Play / Pause" ui:Fx.Icon="&#xE768;" CommandParameter="PlayPause" Style="{StaticResource ActionCard}" Click="OnSystemActionClicked" />
+                                </WrapPanel>
+
+                                <TextBlock Text="DISPLAY" Style="{StaticResource SectionHeader}" />
+                                <WrapPanel>
+                                    <Button Content="TV only" ui:Fx.Icon="&#xE7F4;" CommandParameter="DisplayTv" Style="{StaticResource ActionCard}" Click="OnSystemActionClicked" />
+                                    <Button Content="Laptop only" ui:Fx.Icon="&#xE7F8;" CommandParameter="DisplayLaptop" Style="{StaticResource ActionCard}" Click="OnSystemActionClicked" />
+                                    <Button Content="Duplicate" ui:Fx.Icon="&#xE8C8;" CommandParameter="DisplayDuplicate" Style="{StaticResource ActionCard}" Click="OnSystemActionClicked" />
+                                    <Button Content="Extend" ui:Fx.Icon="&#xE740;" CommandParameter="DisplayExtend" Style="{StaticResource ActionCard}" Click="OnSystemActionClicked" />
+                                </WrapPanel>
+
+                                <TextBlock Text="CONTROL" Style="{StaticResource SectionHeader}" />
+                                <WrapPanel>
+                                    <Button Content="Mouse mode" ui:Fx.Icon="&#xE962;" CommandParameter="MouseMode" Style="{StaticResource ActionCard}" Click="OnSystemActionClicked" />
+                                    <Button Content="Keyboard" ui:Fx.Icon="&#xE765;" CommandParameter="Keyboard" Style="{StaticResource ActionCard}" Click="OnSystemActionClicked" />
+                                    <Button Content="Steam Big Picture" ui:Fx.Icon="&#xE7FC;" CommandParameter="BigPicture" Style="{StaticResource ActionCard}" Click="OnSystemActionClicked" />
+                                    <Button Content="Rescan games" ui:Fx.Icon="&#xE72C;" CommandParameter="Rescan" Style="{StaticResource ActionCard}" Click="OnSystemActionClicked" />
+                                </WrapPanel>
+
+                                <TextBlock Text="POWER" Style="{StaticResource SectionHeader}" />
+                                <WrapPanel>
+                                    <Button Content="Sleep" ui:Fx.Icon="&#xE708;" CommandParameter="Sleep" Style="{StaticResource ActionCard}" Click="OnSystemActionClicked" />
+                                    <Button Content="Lock" ui:Fx.Icon="&#xE72E;" CommandParameter="Lock" Style="{StaticResource ActionCard}" Click="OnSystemActionClicked" />
+                                    <Button Content="Restart" ui:Fx.Icon="&#xE777;" CommandParameter="Restart" Style="{StaticResource DangerCard}" Click="OnSystemActionClicked" />
+                                    <Button Content="Shut down" ui:Fx.Icon="&#xE7E8;" CommandParameter="Shutdown" Style="{StaticResource DangerCard}" Click="OnSystemActionClicked" />
+                                    <Button Content="Exit CouchDeck" ui:Fx.Icon="&#xE8BB;" CommandParameter="ExitApp" Style="{StaticResource ActionCard}" Click="OnSystemActionClicked" />
+                                </WrapPanel>
+                            </StackPanel>
+                        </ScrollViewer>
+
+                        <!-- Customize: every look/feel/library option, live -->
+                        <Grid x:Name="CustomizePage" Visibility="Collapsed">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="36" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <ScrollViewer x:Name="SettingsScroll" Focusable="False" VerticalScrollBarVisibility="Hidden">
+                                <ItemsControl x:Name="SettingsList" Focusable="False" Margin="0,0,8,40"
+                                              ItemTemplateSelector="{StaticResource SettingSelector}" />
+                            </ScrollViewer>
+
+                            <Border Grid.Column="2" Style="{StaticResource GlassPanel}" Padding="34,28" VerticalAlignment="Top" MinWidth="420">
+                                <StackPanel>
+                                    <TextBlock Text="LIVE PREVIEW" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
+                                    <TextBlock x:Name="PreviewFontName" FontSize="15" Foreground="{DynamicResource SubtleTextBrush}" Margin="0,4,0,0" />
+                                    <Grid Margin="0,30,0,30" HorizontalAlignment="Center">
+                                        <Button x:Name="PreviewTile" Style="{StaticResource GameTile}" Focusable="False" IsHitTestVisible="False" />
+                                    </Grid>
+                                    <TextBlock Text="Aa  Ready to play" FontSize="34" FontWeight="{DynamicResource TitleWeight}" />
+                                    <TextBlock Text="Everything here can be changed from the couch." FontSize="17" TextWrapping="Wrap"
+                                               Foreground="{DynamicResource SubtleTextBrush}" Margin="0,6,0,22" MaxWidth="380" HorizontalAlignment="Left" />
+                                    <StackPanel Orientation="Horizontal">
+                                        <Border Width="46" Height="46" CornerRadius="23" Background="{DynamicResource AccentBrush}" Margin="0,0,10,0" />
+                                        <Border Width="46" Height="46" CornerRadius="23" Background="{DynamicResource Accent2Brush}" Margin="0,0,10,0" />
+                                        <Border Width="46" Height="46" CornerRadius="23" Background="{DynamicResource BackgroundBrush}"
+                                                BorderBrush="#40FFFFFF" BorderThickness="1.5" Margin="0,0,10,0" />
+                                        <Border Height="46" CornerRadius="23" Background="{DynamicResource AccentGradientBrush}" Padding="22,0">
+                                            <TextBlock Text="Play" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"
+                                                       Foreground="{DynamicResource OnAccentBrush}" />
+                                        </Border>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </Grid>
+
+                    <!-- ================= Button hints ================= -->
+                    <ItemsControl x:Name="HintsBar" Grid.Row="3" Margin="8,16,0,0" Focusable="False"
+                                  ItemTemplate="{StaticResource HintTemplate}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                </Grid>
+            </Grid>
+
+            <!-- ================= Dialogs, menus, file browser (focus is trapped inside while open) ================= -->
+            <Grid x:Name="ModalLayer" Visibility="Collapsed">
+                <Rectangle x:Name="ModalScrim" Fill="{DynamicResource ScrimBrush}" />
+                <Grid x:Name="ModalBox" HorizontalAlignment="Center" VerticalAlignment="Center" Width="900">
+                    <Grid Margin="10">
+                        <Grid.CacheMode>
+                            <BitmapCache RenderAtScale="0.5" />
+                        </Grid.CacheMode>
+                        <Border CornerRadius="{DynamicResource PanelRadius}" Background="Black">
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="80" ShadowDepth="10" Opacity="0.7" Color="Black" />
+                            </Border.Effect>
+                        </Border>
+                    </Grid>
+                    <Border x:Name="ModalPanel" Style="{StaticResource GlassPanel}" Background="{DynamicResource SurfaceSolidBrush}"
+                            Padding="40,34,40,30"
+                            KeyboardNavigation.DirectionalNavigation="Contained" KeyboardNavigation.TabNavigation="Cycle">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="54" Height="54" CornerRadius="17" Background="{DynamicResource AccentGradientBrush}" VerticalAlignment="Top">
+                                    <TextBlock x:Name="ModalIcon" Style="{StaticResource IconText}" FontSize="24"
+                                               HorizontalAlignment="Center" Foreground="{DynamicResource OnAccentBrush}" />
+                                </Border>
+                                <TextBlock x:Name="ModalTitle" FontSize="31" FontWeight="Bold" Margin="20,0,0,0" VerticalAlignment="Center"
+                                           TextWrapping="Wrap" MaxWidth="700" />
+                            </StackPanel>
+                            <TextBlock x:Name="ModalSubtitle" Grid.Row="1" FontSize="18" TextWrapping="Wrap" Margin="0,16,0,6"
+                                       Foreground="{DynamicResource SubtleTextBrush}" />
+                            <ScrollViewer x:Name="ModalScroll" Grid.Row="2" Focusable="False" VerticalScrollBarVisibility="Hidden"
+                                          MaxHeight="600" Margin="0,14,0,0">
+                                <ItemsControl x:Name="ModalItems" Focusable="False" ItemTemplate="{StaticResource ModalItemTemplate}" Margin="0,4" />
+                            </ScrollViewer>
+                            <ContentControl x:Name="ModalCustom" Grid.Row="2" Margin="0,14,0,0" Focusable="False" Visibility="Collapsed" />
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Grid>
+
+            <!-- ================= Toasts ================= -->
+            <StackPanel x:Name="ToastHost" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,72,96" Width="460"
+                        IsHitTestVisible="False" />
+        </Grid>
+    </Grid>
+</Window>

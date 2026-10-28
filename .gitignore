@@ -1,0 +1,17 @@
+# Build output (tools\install.ps1 publishes to publish\)
+bin/
+obj/
+publish/
+
+# IDE and editor files
+.idea/
+.vs/
+.vscode/
+*.user
+*.suo
+*.DotSettings.user
+
+# OS clutter
+Thumbs.db
+Desktop.ini
+.DS_Store
