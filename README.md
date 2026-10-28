@@ -201,7 +201,8 @@ Installed Steam games are found without any setup. Connect your Steam account to
   Steam account. Turn it off in Customize → Steam.
 
 **Setup (once, from the couch):** Customize → Steam → Steam account → *Get a free Steam Web API key*.
-That opens steamcommunity.com/dev/apikey. Any domain name works (e.g. `localhost`). Copy the key (mouse
+That opens **[steamcommunity.com/dev/apikey](https://steamcommunity.com/dev/apikey)** (sign in with the Steam
+account whose games you want to see). Any domain name works (e.g. `localhost`). Copy the key (mouse
 mode helps), come back, *Paste key from clipboard*. Or put `"SteamWebApiKey": "..."` in config.json, or
 set the `STEAM_API_KEY` environment variable.
 
