@@ -1,0 +1,44 @@
+name: Release
+
+# Push a version tag and GitHub builds CouchDeck.exe from that commit and publishes it as a release.
+# The tag's message becomes the release notes:
+#   git tag -a v2.1.0 --cleanup=verbatim -F notes.md
+#   git push origin v2.1.0
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write # create the release and attach the exe
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      # Same build as tools\install.ps1: one self-contained exe, no .NET needed on the PC.
+      - name: Build CouchDeck.exe
+        shell: pwsh
+        run: |
+          $version = '${{ github.ref_name }}'.TrimStart('v')
+          dotnet publish CouchDeck.csproj -c Release -r win-x64 --self-contained true `
+            -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none `
+            -p:Version=$version -o publish
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Publish the release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 # notes may contain arrows, ✕ ○ □ △...
+          $tag = '${{ github.ref_name }}'
+          # Checkout leaves a plain tag; fetch the real one to read its message.
+          git fetch --force origin "refs/tags/${tag}:refs/tags/${tag}"
+          git tag --list $tag --format='%(contents)' | Out-File notes.md -Encoding utf8
+          gh release create $tag publish/CouchDeck.exe --title "CouchDeck $tag" --notes-file notes.md

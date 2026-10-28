@@ -14,6 +14,12 @@ need a native helper for all of it anyway.
 
 ## Install
 
+**Easiest:** download `CouchDeck.exe` from the [latest release](https://github.com/DDDD-stack/CouchDeck/releases/latest), put it somewhere it
+can stay (e.g. `Documents\CouchDeck`) and double-click it. One file, no .NET needed. It isn't code-signed,
+so Windows may say *"Windows protected your PC"*: **More info → Run anyway**.
+
+**From the code:**
+
 ```
 powershell -ExecutionPolicy Bypass -File tools\install.ps1
 ```
@@ -387,6 +393,16 @@ right-clicking the game → Create shortcut, and copying the shortcut's target.
 3. Switch audio output (laptop speakers ↔ TV over HDMI)
 4. "Running" badge on game tiles, controller battery level, search
 5. Per-game sound on launch (game's own theme)
+
+## Making a release
+
+Push a version tag; GitHub builds `CouchDeck.exe` from that commit and publishes the release
+(`.github/workflows/release.yml`). The tag's message is the release notes:
+
+```
+git tag -a v2.1.0 --cleanup=verbatim -F notes.md
+git push origin v2.1.0
+```
 
 ## License
 
